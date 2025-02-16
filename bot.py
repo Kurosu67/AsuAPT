@@ -1,20 +1,23 @@
+import os
 import discord
 from discord.ext import commands
 import openai
 
-# === Configuration de l'API OpenAI ===
-openai.api_key = "TA_CLE_API"  # Remplace par ta clé API OpenAI
+# === Récupération des clés via variables d'environnement ===
+# Assure-toi de définir ces variables sur Railway ou en local (DISCORD_TOKEN et OPENAI_API_KEY)
+openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+# === Fonction pour appeler l'API OpenAI et générer une réponse ===
 def obtenir_reponse(prompt: str) -> str:
     response = openai.Completion.create(
-        engine="text-davinci-003",  # Ou un autre modèle de ton choix (par exemple GPT-3.5-turbo si disponible)
+        engine="text-davinci-003",  # ou un autre modèle (par ex. gpt-3.5-turbo si tu y as accès)
         prompt=prompt,
-        max_tokens=150,             # Ajuste selon tes besoins
-        temperature=0.7             # Pour contrôler la créativité des réponses
+        max_tokens=150,
+        temperature=0.7
     )
     return response.choices[0].text.strip()
 
-# === Mémoire contextuelle : un dictionnaire pour stocker l'historique par channel ===
+# === Mémoire contextuelle : stocke l'historique des conversations par channel ===
 conversation_history = {}
 
 # === Configuration du bot Discord ===
@@ -23,7 +26,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    # Synchronisation des commandes slash auprès de Discord
+    # Synchronise les commandes slash
     await bot.tree.sync()
     print(f"Connecté en tant que {bot.user}")
 
@@ -32,19 +35,19 @@ async def on_ready():
 async def hello(interaction: discord.Interaction):
     await interaction.response.send_message("Hello !")
 
-# --- Commande slash pour poser une question (sans mémoire contextuelle) ---
+# --- Commande slash pour poser une question (sans mémoire) ---
 @bot.tree.command(name="ask", description="Pose une question au bot alimenté par OpenAI")
 async def ask(interaction: discord.Interaction, question: str):
     prompt = f"User: {question}\nBot:"
     reponse = obtenir_reponse(prompt)
     await interaction.response.send_message(reponse)
 
-# --- Commande slash pour discuter avec le bot en gardant le contexte ---
+# --- Commande slash pour discuter avec mémoire contextuelle ---
 @bot.tree.command(name="chat", description="Discute avec le bot en gardant le contexte")
 async def chat(interaction: discord.Interaction, message_input: str):
     channel_id = str(interaction.channel_id)
     
-    # Initialiser l'historique pour le channel si nécessaire
+    # Initialiser l'historique pour ce channel s'il n'existe pas
     if channel_id not in conversation_history:
         conversation_history[channel_id] = []
     
@@ -60,11 +63,12 @@ async def chat(interaction: discord.Interaction, message_input: str):
     # Ajouter la réponse du bot à l'historique
     conversation_history[channel_id].append(f"Bot: {reponse}")
     
-    # Optionnel : Limiter l'historique (ici, aux 10 derniers échanges)
+    # Limiter l'historique pour ne pas dépasser la limite de tokens (ex. 10 derniers échanges)
     if len(conversation_history[channel_id]) > 10:
         conversation_history[channel_id] = conversation_history[channel_id][-10:]
     
     await interaction.response.send_message(reponse)
 
-# === Démarrer le bot ===
-bot.run("TON_TOKEN_DISCORD")  # Remplace par le token de ton bot Discord
+# === Lancement du bot ===
+# Récupère le token Discord via la variable d'environnement DISCORD_TOKEN
+bot.run(os.environ.get("DISCORD_TOKEN"))
