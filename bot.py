@@ -1,19 +1,24 @@
 import os
+import time
 import discord
 from discord.ext import commands
 import openai
 
-# Récupérer les clés via les variables d'environnement
+# Récupère la clé API OpenAI depuis les variables d'environnement
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
-def obtenir_reponse(prompt: str) -> str:
-    # Appel optimisé à l'API OpenAI pour obtenir une réponse rapide
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",         # Utilise GPT-3.5-turbo, qui est performant pour ce type de requête
+# Fonction asynchrone pour obtenir la réponse de l'API OpenAI
+async def obtenir_reponse(prompt: str) -> str:
+    start_time = time.time()
+    # Utilise l'appel asynchrone de l'API ChatCompletion
+    response = await openai.ChatCompletion.acreate(
+        model="gpt-3.5-turbo",         # Modèle rapide et performant
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=150,                 # Limite le nombre de tokens pour obtenir une réponse concise
-        temperature=0.3                # Température basse pour une réponse plus déterministe et rapide
+        max_tokens=50,                 # Limite le nombre de tokens pour une réponse concise
+        temperature=0.3                # Température basse pour des réponses plus déterministes
     )
+    elapsed_time = time.time() - start_time
+    print(f"OpenAI API call took {elapsed_time:.2f} seconds")
     return response.choices[0].message.content.strip()
 
 # Configuration du bot Discord
@@ -22,18 +27,19 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    # Synchronisation des commandes slash avec Discord
+    # Synchronise les commandes slash
     await bot.tree.sync()
     print(f"Connecté en tant que {bot.user}")
 
 # Commande slash pour poser une question rapide
 @bot.tree.command(name="ask", description="Pose une question rapide au bot alimenté par OpenAI")
 async def ask(interaction: discord.Interaction, question: str):
-    # Indique à Discord que la réponse est en cours pour éviter l'expiration
+    # Indique à Discord que la réponse va arriver
     await interaction.response.defer()
-    # Utilise directement la question comme prompt
-    reponse = obtenir_reponse(question)
+    # Appel asynchrone pour obtenir la réponse de l'API OpenAI
+    reponse = await obtenir_reponse(question)
+    # Envoie la réponse dans un followup pour terminer l'interaction
     await interaction.followup.send(reponse)
 
-# Lancer le bot en utilisant le token récupéré depuis les variables d'environnement
+# Lancement du bot (le token Discord est récupéré via la variable d'environnement DISCORD_TOKEN)
 bot.run(os.environ.get("DISCORD_TOKEN"))
