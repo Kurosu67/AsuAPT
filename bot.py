@@ -11,7 +11,7 @@ def obtenir_reponse(prompt: str) -> str:
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",         # Utilise GPT-3.5-turbo, qui est performant pour ce type de requête
         messages=[{"role": "user", "content": prompt}],
-        max_tokens=50,                 # Limite le nombre de tokens pour obtenir une réponse concise
+        max_tokens=150,                 # Limite le nombre de tokens pour obtenir une réponse concise
         temperature=0.3                # Température basse pour une réponse plus déterministe et rapide
     )
     return response.choices[0].message.content.strip()
